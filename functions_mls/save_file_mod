@@ -1,0 +1,132 @@
+#!/bin/ksh
+###############################################################################
+#
+#  Transfer model output files from working directory (e.g. $TMPDIR)
+#    to the data directory ($data, e.g the work share disc)
+#    in a structured way  
+###############################################################################
+#  save_file                                                 M&D, Jan 1st, 2009
+###############################################################################
+#
+#  Positional arguments
+#   $1:  model          - component model name
+#   $2:  output_type    - output, restart, input or log
+#   $3:  src            - source file name(s) used in the temporary working 
+#                         directory ($work). File lists can be specified using
+#                         regular expressions (*,?,...)
+#   $4:  tgt (optional) - target file name used for storage (if different
+#                         from $3 and $3 is a single file name)
+#
+#  Options
+#    -d DIR             - save file(s) in the sub directory DIR
+#
+###############################################################################
+set -e
+if (( ${CLimit} > 0 )); then
+  CLimit=${CLimit}
+else
+  CLimit=3000
+fi
+if (( ${SleepSec} > 0 )); then
+  SleepSec=${SleepSec}
+else
+  SleepSec=4
+fi
+###############################################################################
+#
+# usage
+#
+usage(){
+  echo "\nsave_file - moves model output file(s) from working directory (\$work)"
+  echo "            to the short term data storage directory (\$data)\n"
+  echo "USAGE: save_file [-d subdir] model output_type src [tgt]\n"
+  echo "   model           component model name"
+  echo "   output_type     file type (output, restart, input or log)"
+  echo "   src             source file name(s); use double-quote (\") characters"
+  echo "                   to specify list of file names"
+  echo "   tgt (optional)  target file name (if different from source file name"
+  echo "                   and src is not a multiple file list)"
+  echo " options"
+  echo "  -d subdir        put file(s) into the specified sub directory"
+  echo "  -h               show this usage message and exit\n"
+  exit 1
+}
+###############################################################################
+
+#
+#-- Check options and arguments
+#
+while getopts "hd:" opt; do
+  case ${opt} in
+    h) usage ;;
+    d) subdir=${OPTARG} ;;
+  esac
+done
+shift ${OPTIND}-1
+
+model=$1
+output_type=$2
+set -A src $3
+tgt=${4:-}
+
+if [ "${model}" = "" ] || [ "${output_type}" = "" ] || [ "${src}" = "" ] ; then
+  usage
+fi
+
+#
+#-- Directory definition
+#
+
+if [ ${output_type} = "output" ]; then
+  datadir=${outdir}/${model}
+elif [ ${output_type} = "restart" ]; then
+  datadir=${restdir}/${model}
+elif [ ${output_type} = "input" ]; then
+  datadir=${inpdir}/${model}
+elif [ ${output_type} = "log" ]; then
+  datadir=${logdir}
+fi
+
+if [[ ${subdir:-""} != "" ]]; then
+  datadir=${datadir}/${subdir}
+  [[ -d ${datadir} ]] || mkdir ${datadir}
+fi
+
+#------------------------------------------------------------------------------
+# Save output in 'data' filesystem (in the RUNscript)
+#------------------------------------------------------------------------------
+
+# Check the date of the output file to assure that the file is new.
+#  (It might happen, that the writing of an output file is not finished
+#   when save_file is called. Then an input file of the same name could be
+#   archived by mistake.)
+
+count=0
+wait=yes
+while [[ "${wait}" = "yes" ]]; do
+  exppwd=`pwd`
+  testid=` echo ${exppwd} | awk -F '/' '{print ( $(NF-1) )}'`
+  echo ${src[0]} ${count} ${testid}
+  [[ ${src[0]} -nt local_reference_file ]] && break || wait="yes"
+  if [ ${count} -gt ${CLimit} ]; then
+    echo "   |- ERROR: No new version of file ${src} available"
+    exit 1
+  else
+    [[ $count -eq 0 ]] && echo "   |- file ${src} not yet updated, please wait at the most for three minutes..."
+    sleep ${SleepSec}
+  fi
+  (( count = count + 1 ))
+done
+
+#
+# Save on data filesystem
+#
+
+cp ${src[*]} ${datadir}/${tgt}
+
+#for file in ${src[*]}; do
+#  chmod ${file_permits} ${datadir}/${tgt:-${file}}
+#  echo "      |- $(basename $0): ${PWD}/${file} >>> ${datadir}/${tgt:-${file}}"
+#done
+
+###############################################################################

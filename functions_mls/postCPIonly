@@ -1,0 +1,79 @@
+#!/bin/bash
+
+#
+#-- Path to the IMDI function directory
+#
+fpath=/home/ntnu/earnest/models/COSMOS/cosmos-1.2.1/util/running/functions
+PATH=${fpath}:$PATH
+#------------------------------------------------------------------------------
+set -ex
+ExpNum=$1
+JobPeriod=$2
+BaseExpID=$3
+export CLimit=200
+export SleepSec=4
+#------------------------------------------------------------------------------
+workdir=`grep 'work=' run_templet | cut -c '6-100'`
+
+CaseDIR=$4
+jpn=0
+
+#------------------------------------------------------------------------------
+# submit Performance analysis
+expidn=0
+ (( jpend = jpn + JobPeriod ))
+while ((  ${expidn} < ${ExpNum} )); do # all experiments start
+  (( expidn = expidn + 1))
+  (( id = expidn + BaseExpID ))
+  expid=${expidPrefix}${id}
+  exphome=${homedir}/${expid}
+  cd ${exphome}/scripts
+  worktarget=`echo ${workdir}/${expid}/outdata/echam5 | sed 's/\//\\\\\//g'`
+	cd ${exphome}/scripts
+	outdir=${CPIdir}/${CaseDIR}/${id}
+  mkdir -p ${outdir}
+	EXPoutdir=`echo ${outdir} | sed 's/\//\\\\\//g'`
+	cp ${home}/CPerfromanceI_templet CPerfromanceI
+  ed -s CPerfromanceI <<EOF4
+g/#JobName/s/#JobName/${expid}/
+g/#JOBID/s/#JOBID/${id}/
+g/#WORKDIR/s/#WORKDIR/${worktarget}/
+g/#EXPDIROUT/s/#EXPDIROUT/${EXPoutdir}/
+g/#CasePeriod/s/#CasePeriod/${JobPeriod}/
+w
+q
+EOF4
+  
+  qsub CPerfromanceI
+	cp CPerfromanceI local_reference_file
+	sleep 2
+done
+#------------------------------------------------------------------------------
+# Results
+expidn=0
+ (( jpend = jpn + JobPeriod ))
+ set -e
+while ((  ${expidn} < ${ExpNum} )); do # all experiments start
+  (( expidn = expidn + 1))
+  (( id = expidn + BaseExpID ))
+  expid=${expidPrefix}${id}
+  exphome=${homedir}/${expid}
+	outdir=${CPIdir}/${CaseDIR}/${id}
+  # save namelist of ECHAM
+  cp  ${workdir}/${expid}/work/namelist.echam ${outdir}
+	cd ${outdir}
+	save_file_mod oasis3 log PerformanceIndex temp_PerformanceIndex  || {
+    echo '  |- file PerformanceIndex_tsurf  not yet updated!!!!!' 
+}
+	cp ${logdir}/temp_PerformanceIndex PerformanceIndex   || {
+    echo '  |- file PerformanceIndex_tsurf  not yet updated!!!!!'
+	}
+	cat PerformanceIndex >> ../PerformanceIndex   || {
+    echo '  |- file PerformanceIndex_tsurf  not yet updated!!!!!'
+	}
+done
+
+
+exit
+
+

@@ -1,0 +1,603 @@
+#------------------------------------------------------------------------------
+#   1.12 POST PROCESSING
+#------------------------------------------------------------------------------
+
+# no suffixes for by CDO splitted files
+export CDO_DISABLE_FILESUFFIX="1"
+
+#
+#-- afterburner: for information on the afterburner see
+#                http://www.mpimet.mpg.de/en/extra/models/echam/prepost.php 
+
+afterburner=$(whence after) || afterburner=/home/ntnu/earnest/tools/bin/after
+
+#
+#-- Code lists for postprocessing of ECHAM5 model output (afterburner)
+#     
+
+# 2-dimensional (BOT) variables included in postprocessing (monthly means)
+codelist_echam5_BOT_mm="85,86,87,88,91,92,93,94,95,96,97,
+     102,103,104,105,106,107,108,109,110,111,112,113,
+     114,115,116,117,119,120,121,122,123,124,
+     134,137,139,140,141,142,143,144,145,146,147,150,151,160,161,164,165,166,
+     167,168,169,171,175,176,177,178,179,180,181,182,184,
+     185,186,187,188,193,197,203,204,205,208,209,
+     210,211,213,214,216,218,219,221,222,229,230,231,233,235,260"
+
+# 3-dimensional atmosphere (ATM) codes/variables included in postprocessing (monthly means)
+codelist_echam5_ATM_mm="130,131,132,133,135,138,148,149,153,154,155,156,157"
+codelist_echam5_ATM_mm_type30="130,131,132,133,135,153,154,156,157,223"
+# use type=70 in afterburner for codes 138,148,149,155
+codelist_echam5_ATM_mm_type70="138,148,149,155"
+
+
+# 6h derived data only generated in post postproccessing if splitting=yes set !
+codelist_echam5_BOT_6h="85,86,87,88,91,92,93,94,95,96,97,
+     102,103,104,105,106,107,108,109,110,111,112,113,
+     114,115,116,117,119,120,121,122,123,124,
+     134,137,139,140,141,142,143,144,145,146,147,150,151,160,161,164,165,166,
+     167,168,169,171,175,176,177,178,179,180,181,182,184,
+     185,186,187,188,193,197,201,202,203,204,205,208,209,
+     210,211,213,214,216,217,218,219,221,222,229,230,231,233,235,237,259,260"
+
+# 3d (ATM) 6 hourly
+codelist_echam5_ATM_6h="130,131,132,133,135,138,148,149,153,154,155,156,157,259"
+codelist_echam5_ATM_6h_type20="153,154,223"
+codelist_echam5_ATM_6h_type30="130,131,132,133,135,156,157"
+# use type=70 in afterburner for codes 138,148,149,155
+codelist_echam5_ATM_6h_type70="138,148,149,155"
+
+
+# 2-dim echam5 co2 stream variables
+codelist_echam5_co2_mm="5,6,7,8,17,20"
+# dm derived data only generated in post postproccessing if dbfill=yes set !
+codelist_echam5_co2_dm="5,8"
+
+# 2-dim echam5 tracer stream variables
+codelist_echam5_tracer_mm="1"
+
+# 2-dim echam5 flux anomalies for double radiation
+[ "${save_dblrad}" = "true" ] && codelist_echam5_accuflx_mm="73,74,75,76,77,78"
+
+# List of vertical pressure levels for the 3-dimensional ATM stream (afterburner)
+levellist_echam5_ATM="100000,92500,85000,77500,70000,60000,50000,40000,30000,25000,20000,15000,10000,7000,5000,3000,1000"
+
+# List of vertical model(!) levels for the 3-dimensional ATM stream (afterburner)
+model_levellist_echam5_ATM="1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19"
+#
+#-- Code lists for postprocessing of MPIOM model output
+#
+# Note : for MPIOM no code specific post processing exists
+#      
+###############################################################################
+#
+#      END OF THE USER INTERFACE
+#
+###############################################################################
+
+set -e
+#------------------------------------------------------------------------------
+#
+#  Complete setup of COSMOS-AO (parameters wich cannot be changed)
+#
+#------------------------------------------------------------------------------
+#
+# declarations
+#
+integer ntproc nprocatm nprococe nprocmpi ncplprococe ncplprocatm
+
+#
+# treatment of coupling fields
+#
+timtransa2o=INSTANT
+
+#
+# Exchange time steps
+#
+dta2o=86400
+dto2a=${dto2a}
+
+# Parameters for ECHAM5
+# ---------------------
+#
+#-- Time step
+#
+if [ ${vres_atm} = 19 ]; then
+  if [ ${res_atm} = T21 ]; then
+    nadt=2400
+  elif [ ${res_atm} = T31  ]; then 
+    nadt=2400
+  elif [ ${res_atm} = T42  ]; then
+    nadt=1800
+  elif [ ${res_atm} = T63  ]; then
+    nadt=1200
+  elif [ ${res_atm} = T85  ]; then
+    nadt=900
+  elif [ ${res_atm} = T106 ]; then
+    nadt=720
+  fi
+elif [ ${vres_atm} = 31 ]; then
+  if [ ${res_atm} = T31  ]; then 
+    nadt=1800
+  elif [ ${res_atm} = T42  ]; then
+    nadt=1200
+  elif [ ${res_atm} = T63  ]; then
+    nadt=720
+  elif [ ${res_atm} = T85  ]; then
+    nadt=480
+  elif [ ${res_atm} = T106 ]; then
+    nadt=360
+  elif [ ${res_atm} = T159 ]; then
+    nadt=240
+  fi
+fi
+
+# Parameters for MPIOM
+# --------------------
+#
+#-- Time step and grid dimensions
+#
+if [ ${res_oce} = GR30 ]; then
+  nx_oce=122
+  ny_oce=101
+  nodt=8640
+elif  [ ${res_oce} = GR15 ]; then
+  nx_oce=256
+  ny_oce=220
+  nodt=4320
+elif  [ ${res_oce} = T43 ]; then
+  nx_oce=130
+  ny_oce=211
+  nodt=4800
+  echo " TIMESTEP NEEDS TO BE CHECKED!"
+fi
+
+#
+# Number of MPI-processors/openMP-threads
+# ---------------------------------------
+ncplprococe=1  # number of ocean MPI processes communicating with oasis
+ncplprocatm=1  # number of atmosphere MPI processes communicating with oasis
+
+nprocatm=nproca_atm*nprocb_atm  # total number of atm. MPI processes
+nprococe=nproca_oce*nprocb_oce  # total number of ocean MPI processes
+
+# total number of MPI processes
+ntproc=nprocatm+nprococe+nprocmpi+nprocoasis
+
+export OMP_NUM_THREADS=1
+export MPIOM_THREADS=${nthreadoce}
+export ECHAM5_THREADS=${nthreadatm}
+
+#------------------------------------------------------------------------------
+#
+#   Directory and name of this script
+#
+#------------------------------------------------------------------------------
+
+if [ "${qsub}" = "qsub" ]; then
+  jobdir=${home}/${expid}/scripts       # directory of this script
+  cd ${jobdir}
+  jobid=${expid}
+  job=`basename $0`
+else
+  jobdir=`dirname $0`
+  cd ${jobdir}
+  jobdir=`pwd`
+  jobid=${expid}
+  job=`basename $0`
+fi
+
+#------------------------------------------------------------------------------
+#
+#   Definition of the functions 
+#
+#------------------------------------------------------------------------------
+
+. function_check_size
+. function_check_codes
+. function_dbfill
+. function_generate_tarfile
+. function_get_file
+. function_get_model_resolution
+. function_get_tarfile
+. function_make_directories
+. function_make_ppdirectories
+. function_prepare_saving
+. function_put_file
+. function_plot_file
+. function_pperror
+
+#------------------------------------------------------------------------------
+#
+#     6. POST - PROCESSING: Saving the output data
+#
+#------------------------------------------------------------------------------
+
+prepare_saving
+
+saving_error=no
+
+#------------------------------------------------------------------------------
+# Definition of some time variables
+# ---------------------------------
+# enddate:      last day of this run
+# prevdate:     last day of the previous run 
+# startyear:    year at the beginning of this run
+# prevyear:     year at the last day of the previous run
+# startdecade:  decade at the beginning of this run
+# prevdecade:   decade at the last day of the previous run
+# previd:       job-id of the previous run (from expid.log)
+# prevstart:    beginning of the previous run (from expid.log)
+
+enddate=$(calc_date minus -c${caltype} -D1 -- ${nextdate})
+prevdate=$(calc_date minus -c${caltype} -D1 -- ${startdate})
+startyear=$(format_date -f4 -- ${startdate} | cut -f1 -d" ")
+prevyear=$(format_date -f4 -- ${prevdate} | cut -f1 -d" ")
+startdecade=${startyear%?}
+prevdecade=${prevyear%?}
+loginfo=$(get_logpid -d ${startdate} -f ${jobdir}/${expid}.log)                
+previd=${loginfo%[ ]*}
+prevstart=${loginfo#*[ ]}
+
+[ ${task} = "RUN" ] && cd ${work}/${expid}/work
+
+#------------------------------------------------------------------------------
+#
+#    4. PRE PROCESSING
+#
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#   4.1 DIRECTORY DEFINITION
+#------------------------------------------------------------------------------
+
+if [ "$(hostname)" = "${host_rem%%.*}" ] ; then 
+   exphome=${path_rem}/${expid}   # Root directory of the experiment (data)
+else
+   exphome=${data}/${expid}       # Root directory of the experiment (data)
+fi
+export bindir=${exphome}/bin      # Directory of the executables
+export inpdir=${exphome}/input    # Directory of the input files
+export restdir=${exphome}/restart # Directory of the restart files
+export outdir=${exphome}/outdata  # Directory of the output data files
+export logdir=${exphome}/log      # Directory of the log data files
+export postdir=${exphome}/post    # Directory for postprocessed data
+
+if [ ${jobnum} = 1 ];then
+   if [ "${task}" = "RUN" ]; then
+      make_directories
+   elif [ "${task}" = "REM" ]; then
+      make_ppdirectories
+   fi
+fi
+
+###############################################################################
+#
+#  Postprocessing of ECHAM5
+#
+###############################################################################
+print "\n++++ ECHAM5 Postprocessing"
+[ "${postprocessing_error}" = "" ] && postprocessing_error=no
+
+afterburner=$(check_external_software after "${afterburner}")
+
+[[ ${out_filetype} = GRIB ]] && format=1 || format=2
+[ ${out_filetype} = NETCDF ] && suff=.nc || suff=.grb
+outmod=${outdir}/${atmmod}
+print "   |- Outputdirectory:\toutmod=$outmod"
+print "   |- Logdirectory:   \tlogdir=${logdir}\n"
+# create codelist files
+if [ ${jobnum} = 1 ]; then
+   [ "${srfmod}" = "jsbach" ] && codelist_echam5_BOT_mm="${codelist_echam5_BOT_mm},100,101"
+   print "${codelist_echam5_BOT_mm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_BOT_mm
+   print "${codelist_echam5_ATM_mm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_mm
+   print "${codelist_echam5_ATM_mm_type30}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_mm_type30
+   print "${codelist_echam5_ATM_mm_type70}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_mm_type70
+   [ "${srfmod}" = "jsbach" ] && print "${codelist_echam5_co2_mm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_co2_mm
+   [ "${co2_transport}" = "true" ] && print "${codelist_echam5_tracer_mm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_tracer_mm
+   [ "${save_dblrad}" = "true" ] && print "${codelist_echam5_accuflx_mm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_accuflx_mm
+   print "${levellist_echam5_ATM}\n" | sed 's/ *//g' > ${outmod}/levellist_${atmmod}_ATM
+   print "${model_levellist_echam5_ATM}\n" | sed 's/ *//g' > ${outmod}/model_levellist_${atmmod}_ATM
+   if [ "${splitting}" = "yes" ]; then
+     [ "${srfmod}" = "jsbach" ] && codelist_echam5_BOT_6h="${codelist_echam5_BOT_6h},100,101"
+     print "${codelist_echam5_BOT_6h}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_BOT_6h
+     print "${codelist_echam5_ATM_6h}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_6h
+     print "${codelist_echam5_ATM_6h_type20}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_6h_type20
+     print "${codelist_echam5_ATM_6h_type30}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_6h_type30
+     print "${codelist_echam5_ATM_6h_type70}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_ATM_6h_type70
+     [ "${srfmod}" = "jsbach" ] && print "${codelist_echam5_co2_dm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_co2_dm
+     [ "${srfmod}" = "jsbach" ] && print "${codelist_echam5_co2_dm}\n" | sed 's/ *//g' > ${outmod}/codelist_${atmmod}_co2_dm
+   fi
+fi
+
+prefix="${outmod}/${expid}"
+substreams="BOT ATM"
+[ "${srfmod}" = "jsbach" ] && substreams="$substreams co2"
+[ "${co2_transport}" = "true" ] && substreams="$substreams tracer"
+[ "${save_dblrad}" = "true" ] && substreams="$substreams accuflx"
+aggrs="mm dm 6h"
+
+#set -ex 
+
+#--  Loop over run months : 
+#     Perform post processing for each dataset=expid_model_substream_aggr
+print "   |+ Loop over dates from ${startdate} to ${nextdate} (detailed printouts only for date=${startdate})"
+date=${startdate}
+while [[ $(later_date -- ${date} ${nextdate}) != ${date} ]]; do
+  year=$(format_date -f4 -- ${date} | cut -f1 -d" ")
+  month=$(format_date -f4 -- ${date} | cut -f2 -d" ")
+  print "    |\n    |+ Date (month) : $year$month\n"
+
+  for substream in ${substreams}; do
+    for aggr in ${aggrs}; do
+      datastream=${atmmod}_${substream}_${aggr}
+      if [ "${aggr}" = "6h" ] && ([ "${substream}" = "co2" ] || [ "${substream}" = "tracer" ]) ; then
+        derfile=${prefix}_${atmmod}_${substream}_${year}${month}${suff}
+        yderfile=${prefix}_${atmmod}_${substream}_${year}${suff}
+      else
+        derfile=${prefix}_${datastream}_${year}${month}${suff} # derived data
+        yderfile=${prefix}_${datastream}_${year}${suff} # yearly merged file
+      fi
+      [[ $date = ${startdate} ]] && print "     |+ Data stream : $datastream"
+      cfile=${outmod}/codelist_${datastream}
+      [ -f $cfile ] && clist=$(cat ${cfile} | sed 's/ *//g') || clist=""
+      if [ ! -s $cfile ] || [ "$clist" = "" ] ; then
+        [[ $date = ${startdate} ]] && print "      |- Nothing to post process" || true
+      else
+     
+        # Afterburner for substreams BOT and ATM
+        if [ "${substream}" = "BOT" ] || [ "${substream}" = "ATM" ] ;then
+          rawfile=${prefix}_${atmmod}_${year}${month}${suff} # monthly main raw file
+          ### create afterburner input lists for echam5_BOT
+          [ "$aggr" = "mm" ] && mean=1 # monthly means
+          [ "$aggr" = "6h" ] && mean=0 # 6 hourly
+          if [ "${substream}" = "BOT" ];then
+            type=20 # Hybrid level gauss grids
+            after_input_list=$(mktemp /tmp/after_input_list$$.XXXXXX)
+            cat > ${after_input_list} << EOF
+  &SELECT
+  CODE=${clist},
+  TYPE=${type},
+  FORMAT=${format},
+  MEAN=${mean},
+  &end
+EOF
+#cp ${after_input_list} ${outdir}/
+            [[ $date = ${startdate} ]] && print "      |- Afterburner for ${datastream}"
+            ${afterburner} < ${after_input_list} $rawfile $derfile 1> ${logdir}/after_${datastream}.out || pperror $task "Afterburner for ${datastream}  at month $year$month => check \${logdir}/after_${datastream}.out \n"
+            mv ${after_input_list} ${inpdir}/${atmmod}/after_input_list_${datastream}_${type}
+
+#exit
+  	  elif [ "${substream}" = "ATM" ];then
+            mfiles=""
+            for type in 20 30 70; # Pressure or Height level gauss grids 
+  	    do
+              acfile=${outmod}/codelist_${datastream}_type${type}
+              [ -f $acfile ] && aclist=$(cat ${acfile} | sed 's/ *//g') || aclist=""
+              if [ ! -s $acfile ] || [ "$aclist" = "" ] ; then
+                [[ $date = ${startdate} ]] && print "      |- No codes of type $type for afterburner of datastream ${datastream}" || true
+              elif [[ $type = 20 ]] && [[ "$aggr" = "mm" ]]; then
+                [[ $date = ${startdate} ]] && print "      |- No afterburner performed for $type of datastream ${datastream}" || true
+              else
+  	        after_input_list=$(mktemp /tmp/after_input_list$$.XXXXXX)
+                if [[ $type = 20 ]] && [[ "$aggr" = "6h" ]]; then
+                  lfile=${outmod}/model_levellist_${atmmod}_${substream}
+                  [ -f ${lfile} ] && llist=$(cat ${lfile} | sed 's/ *//g') || llist=""
+                  cat > ${after_input_list} << EOF
+  &SELECT
+  CODE=${aclist},
+  TYPE=${type},
+  LEVEL=${llist},
+  FORMAT=${format},
+  MEAN=${mean},
+  &end
+EOF
+                else
+                  lfile=${outmod}/levellist_${atmmod}_${substream}
+                  [ -f ${lfile} ] && llist=$(cat ${lfile} | sed 's/ *//g') || llist=""
+                  cat > ${after_input_list} << EOF
+  &SELECT
+  CODE=${aclist},
+  TYPE=${type},
+  LEVEL=${llist},
+  FORMAT=${format},
+  MEAN=${mean},
+  &end
+EOF
+                fi
+                [[ $date = ${startdate} ]] && print "      |- Afterburner for ${datastream}_${type}"
+                tmpout=$(mktemp /tmp/after_tmpout$$.XXXXXX)
+                ${afterburner} < ${after_input_list} $rawfile $tmpout 1> ${logdir}/after_${datastream}_${type}.out || pperror $task "Afterburner for ${datastream}  at month $year$month => check \${logdir}/after_${datastream}_${type}.out"
+                mfiles="$mfiles $tmpout"
+                mv ${after_input_list} ${inpdir}/${atmmod}/after_input_list_${datastream}_${type}
+              fi
+            done # type 20,30,70
+            ${cdo} -s merge $mfiles $derfile
+            ${rm} $mfiles
+          fi # BOT/ATM
+          chmod ${file_permits} $derfile
+        else # co2 or tracer or accuflx => No afterburner, but monthly and daily means by cdos
+          rawfile=${prefix}_${atmmod}_${substream}_${year}${month}${suff} # substream raw file
+          if [ "${aggr}" = "mm" ]; then  #--  Generate monthly means
+            [[ $date = ${startdate} ]] && print "      |- Generate monthly means" 
+            ${cdo} -s monavg -selcode,${clist} $rawfile $derfile
+          elif [ "${aggr}" = "dm" ]; then  #--  Generate daily means
+  	    [[ $date = ${startdate} ]] && print "      |- Generate daily means\n" 
+            ${cdo} -s dayavg -selcode,${clist} $rawfile $derfile
+          fi # [ aggr = dm/mm ]
+  	fi # substreams : if BOT or ATM => afterburner, if co2 or tracer or accuflx => monthly means
+      fi # codelist check
+    done # aggrs
+  done # substreams
+  date=$(calc_date plus -c${caltype} -M1 -- ${date})
+done # date(=months)
+
+
+
+
+#########################
+# tar the files
+#########################
+mpmonth=month
+if [ ${month} = 12 ]; then # tar data file in the end of the year
+
+target=${prefix}_${atmmod}_${year}*
+tarfile=${prefix}_${atmmod}_T${year}.tar
+pax -wz -s  ":.*/:./:" -f ${tarfile} ${target}
+Basesize=`ls -l ${prefix}_${atmmod}_${year}01* | awk '{print \$5}'`
+(( Tsize = Basesize * 12 / 2 ))
+Ssize=`ls -l ${tarfile} | awk '{print \$5}'`
+if [[ "$Ssize" > "$Tsize" ]]; then
+  echo ${tarfile} tared  successfully
+  rm ${target}
+fi
+aggr="mm"
+tarfile=${outdir}/${atmmod}/MEAN_${expid}_${year}.tar
+for substream in ${substreams}; do
+  target=${prefix}_${atmmod}_${substream}_${aggr}_${year}*
+ #trfile=${prefix}_${atmmod}_${substream}_T${aggr}_${year}.tar
+  if [[ -f ${tarfile} ]]; then
+    pax -wa -s  ":.*/:./:" -f ${tarfile} ${target}
+  else
+    pax -w -s  ":.*/:./:" -f ${tarfile} ${target}
+  fi
+done
+Tsize=30000000
+Ssize=`ls -l ${tarfile} | awk '{print \$5}'`
+#if [[ "$Ssize" > "$Tsize" ]]; then
+  echo ${tarfile} tared successfully
+  for substream in ${substreams}; do
+    target=${prefix}_${atmmod}_${substream}_${aggr}_${year}*
+    rm ${target}
+  done
+#fi
+
+fi # end of month check
+
+
+
+###############################################################################
+#
+#  Postprocessing of MPIOM
+#
+###############################################################################
+printf "\n+++++ MPIOM Postprocessing\n"
+
+[ "${postprocessing_error}" = "" ] && postprocessing_error=no
+[ ${out_filetype} = EXTRA ] && suff=.nc || suff=.grb
+outmod=${outdir}/${ocemod}
+print "    |- Output directory:\toutmod=$outmod\n    |"
+
+enddate=`calc_date minus -c${caltype} -D1 -- ${nextdate}`
+year=`format_date -f4 -- ${startdate} | cut -f1 -d" "`
+month=`format_date -f4 -- ${startdate} | cut -f2 -d" "`
+runper=${startdate}_${enddate}
+prefix="${outmod}/${expid}"
+rawfile=${prefix}_${ocemod}_${runper} # raw file
+printf "    |+ Date (startmonth/runperiode) : $year$month/${runper}\n"
+datastream=${ocemod}_mm
+printf "     |+ Data stream : $datastream\n"
+
+set -e 
+
+if [ -f ${rawfile}.ext ] ; then
+  if [ "x${out_filetype}" = "xGRIB" ]; then # convert output from EXTRA to GRIB
+    print "      |- Convert raw output to grib format"
+    ${cdo} -s -f grb -g ${exphome}/input/${ocemod}/${res_oce}s.nc selindexbox,2,$((${nx_oce}-1)),1,${ny_oce} -setgrid,r${nx_oce}x${ny_oce} ${rawfile}.ext ${rawfile}.grb
+    [[ "$?" != "0" ]] && pperror $task "cdo convert to grib -> mm in ${runper}"
+    rm_list="${rm_list} ${rawfile}.ext"
+  elif [ "x${out_filetype}" != "xRAW" ] && [ "x${out_filetype}" != "x" ] ; then
+    print "      |- ERROR: Archiving format ${arch_format} not supported\n"
+    exit 1
+  fi
+fi
+
+
+
+#########################
+# tar the files
+#########################
+if [ ${mpmonth} = 12 ]; then # tar data file in the end of the year
+  target="${rawfile}.grb ${outmod}/TIMESER.${year}* ${outmod}/fort_${year}*"
+  tarfile=${prefix}_${ocemod}_T${year}.tar
+  pax -wz -s  ":.*/:./:" -f ${tarfile} ${target}
+  rm ${target}
+fi
+
+
+
+
+
+
+#------------------------------------------------------------------------------
+#
+# Check whether postprocessing was successfull
+#
+#------------------------------------------------------------------------------
+
+# correct job name (PBS truncates job name to the first 15 characters)
+[[ -f ${jobdir}/${job} ]] || job=${expid}.post.${nextdate}
+
+if [ ${postprocessing_error} = no ]; then
+  print "    |- Postprocessing was successfull\n"
+  if [ "${postprocessing_rem}" = "yes" ]; then
+    touch ${jobdir}/${expid}.post.${nextdate}.done
+    remote_transfer -p "${rtp}" -h "${submit_host}" -c put \
+                    -l ${jobdir}/${expid}.post.${nextdate}.done \
+                    -r ${home}/${expid}/scripts/${expid}.post.${nextdate}.done
+
+    check_size      ${jobdir}/${expid}.post.${nextdate}.done \
+                    ${home}/${expid}/scripts/${expid}.post.${nextdate}.done \
+		    "${rtp}" "${submit_host}"
+  fi
+  #-- remove logfiles of previous post processing jobs
+  if [ ${jobnum} != 1 ]; then
+    prevjob=${expid}.post.${startdate}
+    if [ ! -f ${jobdir}/${prevjob} ]; then
+      list=$(ls ${jobdir}/${prevjob}.o* 2>/dev/null) || list=""
+      if [[ "$list" != "" ]];then
+        print "    |- Removing logfile of previous postprocessing job ${list}\n"
+        ${rm} ${list}
+      fi
+    fi
+  fi
+  if [ ${job} != ${expid}.post ]; then   # don't remove template
+    printf "     |- Removing ${jobdir}/${job}\n"
+    ${rm} ${jobdir}/${job}
+  fi
+  if [ -s rm.lst.$$ ] ; then
+    printf  "    |+ Removing files listed in file rm.lst.$$\n"
+    for file in `cat rm.lst.$$`; do
+      printf "      |- Removing file : $file\n"
+      ${rm} $file
+    done
+    rm rm.lst.$$
+  fi
+  if [ "${rm_list}" != "" ]; then
+    print  "     |- Removing files ${rm_list}\n"
+    ${rm} ${rm_list} || printf "      |- WARNING : Not all files in rm_list could be removed"
+  fi
+else
+  printf "     |- ERROR occured: postprocessing_error = ${postprocessing_error}\n"
+  if [ "${postprocessing_rem}" != "yes" ]; then
+    printf "     |   => ${job} is resubmitted\n"
+    cd ${jobdir}
+    submit ${job} wait
+    wait
+    exit
+  fi
+fi
+
+#------------------------------------------------------------------------------
+#
+#     9. EPILOGUE
+#
+#------------------------------------------------------------------------------
+
+date
+${job_account}
+wait
+print "\n This ${task} script ended                   at\t$(date | tr -s ' ' | cut -f2-4 -d' ') on host $(hostname)\n"
+echo  " This ${task} script ended   at $(date | tr -s ' ' | cut -f2-4 -d' ') on host $(hostname)" > postdone
+exit
+
+

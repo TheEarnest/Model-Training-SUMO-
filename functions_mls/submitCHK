@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#
+#-- Path to the IMDI function directory
+#
+Jobexpid=$1
+submitcheck=no
+while [ ${submitcheck} == 'no'  ] ; do
+  set -ex
+  qsub ${Jobexpid}.run
+	sleep 5
+	submitResults=`qstat -u earnest | grep run${Jobexpid} ` || {
+    echo ' Job submiting is not correct!!!!!'
+    sleep 2;  submitR='X'
+  }
+  if [ "${submitR}" != "X" ]; then
+  submitR=`echo ${submitResults} | awk -F ' ' '{print $(NF)}'	| cut -c3-3` 
+	fi
+				
+	if [ "${submitR}" == "X" ]; then
+    submitcheck=no
+	else
+	  downcount=0
+    while [ "${submitR}" != ":"  ] && [ "${submitR}" != "X"  ] ;  do
+      submitResults=`qstat -u earnest | grep run${Jobexpid} ` || {
+        sleep 2;  submitR='X'
+      }
+		  if [ "${submitR}" != "X" ]; then
+  		  submitR=`echo ${submitResults} | awk -F ' ' '{print $(NF)}' | cut -c3-3`
+		  fi
+
+      (( downcount = downcount + 1 ))
+  		sleep 4; echo ${downcount}': Waiting for job submitting~~~~~~~'
+	  	if (( ${downcount} > 6 )) ; then
+        submitR='X'
+    		submitcheck=no
+				submitID=`echo ${submitResults} | awk -F ' ' '{print $1 }'` 
+				deljobchk=no
+				while [ "${deljobchk}" == "no" ] ; do
+				  deljobfail=no
+		  		qdel ${submitID} || {
+					  echo 'waiting 5 s to del job!!'
+			  	  sleep 5; deljobfail=yes 
+		  		}
+					if [ "${deljobfail}" != "yes" ] ; then
+					  deljobchk=yes
+					fi
+				done
+	  	fi
+  	done
+    if [ "${submitR}" == ":" ] ; then
+  	  submitcheck=yes
+	  fi
+	fi
+done
+# ------------------------------------------------------------------------
+
+
+

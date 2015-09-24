@@ -1,0 +1,13 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+Jobhome=/work/earnest/TrainSUMO
+set -e
+Jfiles=`ls -lh ${Jobhome}/*/scripts/*.date | awk -F " " '{print $NF}' `
+
+for job in ${Jfiles} ; do
+  Jtime=`ls -lh ${job} | awk -F " " '{print $7}' `
+	Jname=`echo ${job} | awk -F "/" '{print $NF}' `
+	Jdate=` cat ${job}  `
+	echo ${Jname}'  '${Jtime}'  '${Jdate}  
+done
+#------------------------------------------------------------------------------

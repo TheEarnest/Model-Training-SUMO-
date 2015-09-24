@@ -1,0 +1,37 @@
+#--------------------------------------------------------------
+# Parameters
+#
+# the total number for initiated the training process
+Base_MLB_number=400     # the number of jobs for starting training
+Max_job_number=2      # sequential or concurrent run
+Base_job_count=100
+MCLimit=200
+SleepSec=30
+spinupyrs=10
+JobPeriod=30
+RSyear=1099
+RSSExpid=pSUMO; RSSyear=1999;
+TimeUsed=2000; # (s) > how long it takes to finish a job. (T31: 16 min)
+atmres=T31; atmlev=L19; oceres=GR30; ocelev=L40;
+#--------------------------------------------------------------
+# used for parallel cases
+InitHasDone=1
+MaxInitCounter=0
+#--------------------------------------------------------------
+# Files
+#
+MLprefix=ML_NM
+LUTable=${MLprefix}"lookuptable"
+# structure in loookuptable
+# pid -> init-count expid parameters
+LUlog="LOG_ML_NMlookuptable"
+NMInputTable=${MLprefix}"Inputs"
+NMOutputTable=${MLprefix}"Outputable"
+GParaTable="coefficients"
+GPerfTable="outputs"
+linesep='#----------------------------------------------------------------------'
+#--------------------------------------------------------------
+# Directories
+#
+CPIdir=/work/earnest/Analysis/out_CPI
+workdir=/work/earnest/TrainSUMO

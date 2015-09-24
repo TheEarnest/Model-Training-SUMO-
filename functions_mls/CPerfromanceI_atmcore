@@ -1,0 +1,115 @@
+#!/bin/ksh
+set -e
+codename=`cdo showname ${expid}${aid}_code${code_bot}_${iyr}_${eyr} | awk '{print $1}'`
+
+ eval 'if [ "${OB'${codename}'}" == "" ]; then  OB'${codename}'=skt; fi'  #
+ eval 'OBmean=${OBDIR}/${OB'${codename}'}${OBmeanS}' # Climatology average
+ eval 'OBvar=${OBDIR}/${OB'${codename}'}${OBvarS}'   # anomaly variability
+ eval 'OBtsYM=${OBDIR}/${OB'${codename}'}${OBtsSYM}' # multi year monthly average
+ eval 'OBYM=${OBDIR}/${OB'${codename}'}${OBymmS}'    # multi year monthly average (land is included.)
+ 
+#cdo mergetime ${files} ${workdir}/skt.sfc.gauss.1990-2009.nc
+  cdo monmean ${expid}${aid}_code${code_bot}_${iyr}_${eyr}  temp_monmeantemp
+
+  if [ "${codename}" == 'precip' ] || [ "${codename}" == 'evap' ]; then
+    cp temp_monmeantemp temp_monmeantemp_precip
+    # kg/m^2s to mm/day : 86655.81663629200, zou = 997.0479 at 25 C
+    cdo mulc,86655.81663629200 temp_monmeantemp_precip temp_monmeantemp
+  fi
+  fluxdirmcodes="ahfs ahfl trads stads"
+  for fluxcheckm in ${fluxdirmcodes}; do
+    if [ "${codename}" == "${fluxcheckm}" ]; then
+      cp temp_monmeantemp temp_monmeantemp_fluxC
+      cdo mulc,-1.0 temp_monmeantemp_fluxC temp_monmeantemp
+  fi
+  done # done for flux direction check
+
+
+	cdo seldate,${CPIiyr}-01-01,${eyr}-12-31 temp_monmeantemp temp_monmean
+#cdo setvrange,263,333 temp_monmean temp_monmean2
+# from I16 to F32
+  cdo -f nc copy temp_monmean temp_nc
+# have the mean & var
+  cdo ymonmean temp_nc temp_ymonmean
+  cdo sub temp_nc  temp_ymonmean temp_anomaly
+  cdo timvar temp_anomaly temp_atimvar
+  cdo timmean temp_nc temp_timmean
+  cdo timvar temp_nc temp_timvar
+	cdo sub temp_ymonmean ${OBtsYM} temp_sub
+  cdo mul ${mask_atm} temp_sub temp_subM
+  cdo sqr temp_subM temp_sqrM
+  cdo timmean temp_sqrM temp_msqrM
+#
+#------------------------------------------------------------------------------
+# for global region
+  cdo fldmean ${OBvar} temp_Gtimvar
+  Gtimvar=`cdo outputf,%20.14g,1 temp_Gtimvar | awk -F " " '{print $1}' `
+  cdo divc,${Gtimvar} temp_msqrM temp_norm
+  cdo fldmean temp_norm temp_PerIndex
+  #CPI=`cdo outputf,%9.6g,1 temp_PerIndex`
+  cdo timmean temp_subM temp_subtimmeanM
+  cdo fldmean temp_subtimmeanM temp_subMean
+
+  GlobalM=`cdo outputf,%20.14g,1 temp_subMean | awk -F " " '{print $1}'`
+	CPI=`cdo outputf,%20.14g,1 temp_PerIndex`
+	cdo divc,${Gtimvar} temp_atimvar temp_varR
+	cdo fldmean temp_varR temp_PerIndexVar
+	VarR=`cdo outputf,%20.14g,1 temp_PerIndexVar`
+#
+#------------------------------------------------------------------------------
+# for Tropical 
+  cdo sellonlatbox,0,360,-30,30 temp_msqrM temp_msqrTS
+  cdo sellonlatbox,0,360,-30,30 ${OBvar} temp_OBvarTS
+  cdo fldmean temp_OBvarTS temp_GtimvarTS
+  TStimvar=`cdo outputf,%20.14g,1 temp_GtimvarTS | awk -F " " '{print $1}' `
+  TStimvar=`echo "${TStimvar}" | bc -l`
+  cdo divc,${TStimvar} temp_msqrTS temp_normTS
+  cdo fldmean temp_normTS temp_PerIndexTS
+	CPITS=`cdo outputf,%20.14g,1 temp_PerIndexTS`
+#
+#------------------------------------------------------------------------------
+# for Tropical Pacific
+	cdo sellonlatbox,170,270,-10,10 temp_msqrM temp_msqrTP
+  cdo sellonlatbox,170,270,-10,10 ${OBvar} temp_OBvarTP
+  cdo fldmean temp_OBvarTP temp_GtimvarTP
+  TPtimvar=`cdo outputf,%20.14g,1 temp_GtimvarTP | awk -F " " '{print $1}' `
+  cdo divc,${TPtimvar} temp_msqrTP temp_normTP
+  cdo fldmean temp_normTP temp_PerIndexTP
+  CPITP=`cdo outputf,%20.14g,1 temp_PerIndexTP`
+#
+#------------------------------------------------------------------------------
+# for Tropical Atlantic
+  cdo sellonlatbox,-70,20,-10,10 temp_msqrM temp_msqrTA
+  cdo sellonlatbox,-70,20,-10,10 ${OBvar} temp_OBvarTA
+  cdo fldmean temp_OBvarTA temp_GtimvarTA
+  TAtimvar=`cdo outputf,%20.14g,1 temp_GtimvarTA | awk -F " " '{print $1}' `
+  cdo divc,${TPtimvar} temp_msqrTA temp_normTA
+  cdo fldmean temp_normTA temp_PerIndexTA
+  CPITA=`cdo outputf,%20.14g,1 temp_PerIndexTA`
+#
+#------------------------------------------------------------------------------
+#
+	#echo ${CPI} ${CPITS} ${CPITP}
+	CPI=`echo "(${CPI})/1.0" | bc -l | cut -c1-14`
+	CPITS=`echo "(${CPITS})/1.0" | bc -l | cut -c1-14`
+	CPITP=`echo "(${CPITP})/1.0" | bc -l | cut -c1-14`
+  CPITA=`echo "(${CPITA})/1.0" | bc -l | cut -c1-14`
+
+
+  mkdir -p ../${codename}
+  echo ${JobID}${SepM}${GlobalM}${SepM}${CPI}${SepM}${CPITS}${SepM}${CPITP}${SepM}${CPITA}${SepM}`date`  >> ${dirout}/PerformanceIndex_${codename}
+#  eval 'echo '${echostr}'  >> ${dirout}/PerformanceIndex_${codename}_lati'
+	mv temp_* ../${codename}
+  mv PerformanceIndex* ../${codename}
+	cp ${expid}${aid}_code${code_bot}_${iyr}_${eyr} ../${codename}
+	rm -f ../${codename}/${expid}${aid}_code${code_bot}_${iyr}_${eyr}.gz
+	gzip ../${codename}/${expid}${aid}_code${code_bot}_${iyr}_${eyr}
+  #exit
+	#rm temp_*
+
+
+
+
+
+
+

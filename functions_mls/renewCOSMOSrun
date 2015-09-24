@@ -1,0 +1,99 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# used for renewing a COSMOS run from a certain restart
+if [[ -n $1 ]] ; then
+  SExpid=$1
+else
+  SExpid=S39122
+fi
+if [[ -n $2 ]] ; then
+  Syear=$2
+else
+  Syear=1999; 
+fi
+Sresdate=1231; Tstartdate=0101;
+atmids="01 02"
+if [[ -n $3 ]] ; then
+  TExpid=$3
+else
+  TExpid=GLb150
+fi
+if [[ -n $4 ]] ; then
+  Tyear=$4
+else
+  Tyear=1100
+fi
+if [[ -n $5 ]] ; then
+  atmres=$5
+else
+  atmres=T31
+fi
+if [[ -n $6 ]] ; then
+  atmlev=$6
+else
+  atmlev=L19
+fi
+if [[ -n $7 ]] ; then
+  oceres=$7
+else
+  oceres=GR30
+fi
+if [[ -n $8 ]] ; then
+  ocelev=$8
+else
+  ocelev=L40
+fi
+tarprefix=${atmres}${oceres}
+workdir=/work/earnest/TrainSUMO
+Starfn=${SExpid}_${tarprefix}_${Syear}_restart.tar
+ExpHome=${workdir}/${TExpid}
+ExpRestart=${ExpHome}/restart
+ExpScripts=${ExpHome}/scripts
+ncChange=/home/`echo ${HOME} | awk -F "/" '{print $3}'`/earnest/tools/nc_change_attr_int
+mkdir -p ${ExpHome}
+set -ex
+# tar xf ${workdir}/cosmos-ao/C${atmres}${atmlev}${oceres}${ocelev}_restart.tar -C ${ExpHome}
+#tar xf ${workdir}/cosmos-ao/CT31L19GR30L40_restart.tar -C ${ExpHome}
+tar xf ${workdir}/cosmos-ao/${Starfn} -C ${ExpHome}
+#---------------------------------------------------------------------
+# date in Source restart files
+echamOres=${ExpRestart}/echam5/rerun_${SExpid}01_echam_${Syear}1231
+SSdate=`ncdump -h ${echamOres} | grep fdate | awk -F " " '{print $(NF-1)}' `
+SSyear=`echo ${SSdate} | awk -F "${Sresdate}" '{print $1}' `
+STdate=`ncdump -h ${echamOres} | grep vdate | awk -F " " '{print $(NF-1)}' `
+STyear=`echo ${STdate} | awk -F "${Sresdate}" '{print $1}' `
+  (( runT = STyear - SSyear ))
+  (( TSyear = Tyear - runT))
+if (( ${TSyear} < 0 )); then  echo "fdate is negative!!!!"; exit; fi
+#---------------------------------------------------------------------
+# modify file name
+for aid in ${atmids}; do
+  mv ${ExpRestart}/echam5/${SExpid}${aid}_hdrestart_${Syear}1231.nc \
+     ${ExpRestart}/echam5/${TExpid}${aid}_hdrestart_${Tyear}1231.nc
+  echamRestart=rerun_${TExpid}${aid}_echam_${Tyear}1231
+  mv ${ExpRestart}/echam5/rerun_${SExpid}${aid}_echam_${Syear}1231 \
+     ${ExpRestart}/echam5/${echamRestart}
+  cd ${ExpRestart}/echam5
+  ${ncChange} ${echamRestart} GLOBAL "fdate" ${TSyear}${Sresdate}
+  ${ncChange} ${echamRestart} GLOBAL "vdate" ${Tyear}${Sresdate}
+  mv ${ExpRestart}/oasis3/flxatm${aid}_${SExpid}_${Syear}1231.nc \
+     ${ExpRestart}/oasis3/flxatm${aid}_${TExpid}_${Tyear}1231.nc
+  mv ${ExpRestart}/oasis3/sstoce${aid}_${SExpid}_${Syear}1231.nc \
+     ${ExpRestart}/oasis3/sstoce${aid}_${TExpid}_${Tyear}1231.nc
+done
+mv ${ExpRestart}/mpiom/RESTART_${SExpid}_${Syear}1231 \
+   ${ExpRestart}/mpiom/RESTART_${TExpid}_${Tyear}1231
+mv ${ExpScripts}/${SExpid}.log  ${ExpScripts}/${TExpid}.log
+mv ${ExpScripts}/${SExpid}.run  ${ExpScripts}/${TExpid}.run
+mv ${ExpScripts}/${SExpid}.date ${ExpScripts}/${TExpid}.date
+if [ -f ${ExpScripts}/${SExpid}.post ]; then
+  mv ${ExpScripts}/${SExpid}.post  ${ExpScripts}/${TExpid}.post
+fi
+sedStr='s/'${SExpid}'/'${TExpid}'/g'
+sed -i ${sedStr} ${ExpScripts}/${TExpid}.log
+sed -i ${sedStr} ${ExpScripts}/${TExpid}.run
+  ((  TNyear = Tyear + 1 ))
+	echo ${TNyear}${Tstartdate}" 2" >  ${ExpScripts}/${TExpid}.date
+
+#---------------------------------------------------------------------
+

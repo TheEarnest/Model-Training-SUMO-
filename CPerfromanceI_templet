@@ -1,0 +1,183 @@
+#!/bin/ksh
+
+###############################################################################
+
+
+#PBS -N rCPI#JobName
+#PBS -q batch
+#PBS -l mppwidth=1
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -S /bin/bash
+#PBS -A nn9039k
+
+###############################################################################
+#------------------------------------------------------------------------------
+#
+#     0. PROLOGUE
+#
+#------------------------------------------------------------------------------
+module load cdo
+ 
+#cdo=/work/apps/cdo/1.5.4-cray/bin/cdo
+#
+set -e
+#
+typeset -Z2 monat
+modname="echam5"
+expid=#JobName; exp=res031_${expid} ; Grid=T31
+JobID=#JOBID
+dirin=#WORKDIR
+dirout=#EXPDIROUT/work
+Period=#CasePeriod
+CPIPeriod=#CPIPeriod
+atmids=#ATMCMIDS
+fpath=#FUNCTIONPATH
+ . ${fpath}/../setup/nametable
+# Observations
+OBtsurf=skt; OBu10=uwnd; OBv10=vwnd
+OBtemp2=air2m; OBaprc=cprat; OBahfl=lhtfl; OBahfs=shtfl;
+OBsrad0=skt; OBtrad0=skt; # a fake one for calculating TAO
+MecDephome=` pwd | awk -F "/" '{print $3}'`
+OBDIR=/home/${MecDephome}/earnest/Data/OBData/T31
+OBperiod=1948-1979
+#OBperiod=1991-2000
+OBmeanS=_Otimmean.${OBperiod}.nc
+OBvarS=_OmonanoVAR.${OBperiod}.nc
+OBymmS=_ymonmean.${OBperiod}.nc
+OBtsSYM=_Oymonmean.${OBperiod}.nc
+mask_atm=${OBDIR}/GridInfo/T31maskF32.nc
+SepM=","
+#------------------------------------------------------------------------------
+bcodesR="169 "
+#bcodesT="178 179 4 165 166 143 146 147 167 176 177"
+bcodesT="4 143 144 146 147 160 165 166 167 169 171 176 177 178 179 180 181 182 184 185 186 187 188 203 204 205 164 178 179 151 "
+#   4 -> precip  (total precipitation)
+# 114 -> evapwac (evaporation over water)
+# 142 -> aprl    (large scale precipitation)
+# 143 -> aprc    (convective precipitation)
+# 146 -> ahfs    (sensible heat flux)
+# 147 -> ahfl    (latent heat flux)
+# 151 -> slp     (mean sea level pressure)
+# 165 -> u10     (10m u-velocity)
+# 166 -> v10     (10m v-velocity)
+# 167 -> temp2   (2m temperature)
+# 169 -> tsurf   (surface temperature)
+# 176 -> srads   (net surface SW radiation)
+# 177 -> trads   (net surface LW radiation)
+# 178 -> srad0   (net top SW radiation)
+# 179 -> trad0   (net top LW radiation (-OLR, outgoing longwave radiation))
+#------------------------------------------------------------------------------
+
+for aid in ${atmids} ; do # for multi models
+ 
+bcodes=${bcodesR}" "${bcodesT}
+
+nameprefix=${expid}${aid}"_"${modname}
+if [ ! -r $dirout ] ; then mkdir -p $dirout ; fi
+cd $dirout
+dirout=`pwd`
+echo ${dirout}
+#localdir=`pwd`
+dyr=${Period}
+if (( ${dyr} > 1 )); then
+  (( iyr = RSyear + 1 ))
+else
+  iyr=${RSyear}
+fi
+  (( feyr = iyr + Period - 1 ))
+
+nm=1   # number of months computed per job
+
+tarin=1
+szipin=0   # if input files are szipped
+szipout=0  # if output files should be szipped
+
+set -e
+#while [ ${iyr} -le $feyr ] ; do
+ (( eyr = iyr + dyr -1 ))
+ (( CPIiyr = eyr - CPIPeriod + 1 ))
+
+#------------------------------------------------------------------------------
+#  creating time series data of echam output 
+ . ${fpath}/timeseries_echam
+
+done ; # for multi atm component models
+#------------------------------------------------------------------------------
+# Creating time series data of mpiom output 
+# . ${fpath}/timeseries_mpiom
+
+aid=` echo ${atmids} | awk -F " " '{print $1}'`
+bcodes=${bcodesR}
+for code_bot in ${bcodes} ; do
+  set -ex
+  . ${fpath}/CPerfromanceI_atmcore
+  #exit
+	#rm temp_*
+done   # for code_bot
+
+#
+#######################################################################
+#  average of the performance indice
+#  temp_PerIndex, temp_PerIndexVar, temp_PerIndexTS, temp_PerIndexVarTS, temp_PerIndexTP
+
+set -ex
+evalstrPI='cdo ensmean  '
+evalstrPIV='cdo ensmean  '
+evalstrPITS='cdo ensmean  '
+evalstrPITP='cdo ensmean  '
+evalstrPITA='cdo ensmean  '
+for code_bot in ${bcodes} ; do
+codename=`cdo showname ${expid}${aid}_code${code_bot}_${iyr}_${eyr} | awk '{print $1}'`
+  evalstrPI=${evalstrPI}' '${dirout}/../${codename}/temp_PerIndex'  '
+  evalstrPITS=${evalstrPITS}' '${dirout}/../${codename}/temp_PerIndexTS'  '
+  evalstrPITP=${evalstrPITP}' '${dirout}/../${codename}/temp_PerIndexTP'  '
+  evalstrPITA=${evalstrPITA}' '${dirout}/../${codename}/temp_PerIndexTA'  '
+done  # for averaging over all code_bot
+evalstrPI=${evalstrPI}' ${dirout}/temp_PerIndex'
+evalstrPITS=${evalstrPITS}' ${dirout}/temp_PerIndexTS'
+evalstrPITP=${evalstrPITP}' ${dirout}/temp_PerIndexTP'
+evalstrPITA=${evalstrPITA}' ${dirout}/temp_PerIndexTA'
+cd ${dirout}
+eval ${evalstrPI}
+eval ${evalstrPITS}
+eval ${evalstrPITP}
+eval ${evalstrPITA}
+
+CPI=`cdo outputf,%20.14g,1 temp_PerIndex`
+CPITS=`cdo outputf,%20.14g,1 temp_PerIndexTS`
+CPITP=`cdo outputf,%20.14g,1 temp_PerIndexTP`
+CPITA=`cdo outputf,%20.14g,1 temp_PerIndexTA`
+
+CPI=`echo "${CPI}/1.0" | bc -l | cut -c1-14`
+CPITS=`echo "${CPITS}/1.0" | bc -l | cut -c1-14`
+CPITP=`echo "${CPITP}/1.0" | bc -l | cut -c1-14`
+CPITA=`echo "${CPITA}/1.0" | bc -l | cut -c1-14`
+
+#------------------------------------------------------------------------------
+# calculating the TOA
+ntSWR=${expid}${aid}_code178_${iyr}_${eyr}
+ntLWR=${expid}${aid}_code179_${iyr}_${eyr}
+cdo timmean ${ntSWR} temp_meanSWR
+cdo timmean ${ntLWR} temp_meanLWR
+cdo add temp_meanSWR temp_meanLWR temp_meanTOA
+cdo fldmean temp_meanTOA temp_fldmTOA
+TOA=`cdo outputf,%20.14g,1 temp_fldmTOA `
+TOA=`echo "${TOA}/1.0" | bc -l | cut -c1-14`
+
+echo ${expid}${SepM}${TOA}${SepM}${CPI}${SepM}${CPITS}${SepM}${CPITP}${SepM}${CPITA}  >> ${dirout}/PerformanceIndex
+cp ${dirout}/PerformanceIndex ${dirout}/../PerformanceIndex
+#
+#######################################################################
+#iyr=`expr ${iyr} + ${dyr}`
+#done # for multi-period analysis
+
+
+echo ' |-> Performance Index was finished.'
+#done ; #expid
+
+
+
+
+
+

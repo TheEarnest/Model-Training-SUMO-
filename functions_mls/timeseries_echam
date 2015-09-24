@@ -1,0 +1,86 @@
+#!/bin/ksh
+
+
+i=$iyr
+while [ ${i} -le $eyr ] ; do
+echo $i
+set -e
+### name exp: MEAN_P32_0800.tar
+if [ ${i} -le 999 ]; then
+  tarName=MEAN_${expid}${aid}_0${i}.tar
+else
+  tarName=MEAN_${expid}${aid}_${i}.tar
+fi
+if [ $tarin -eq 1 ] ; then cd $dirin ; tar xv -f ${dirin}/${tarName} -C ${dirout} ; 
+cd $dirout ; fi
+monat=1
+while [ ${monat} -le 12 ]
+do
+echo ${i}${monat}
+## ## C0101_echam5_ATM_mm_080102.grb
+if [ ${tarin} -eq 1 ]; then
+if [ ${i} -le 999 ]; then
+  FILEATM=${nameprefix}_ATM_mm_0${i}${monat}.grb
+  FILEBOT=${nameprefix}_BOT_mm_0${i}${monat}.grb
+else
+  FILEATM=${nameprefix}_ATM_mm_${i}${monat}.grb
+  FILEBOT=${nameprefix}_BOT_mm_${i}${monat}.grb
+fi
+else
+if [ ${i} -le 999 ]; then
+  FILEATM=${dirin}/${nameprefix}_ATM_mm_0${i}${monat}.grb
+  FILEBOT=${dirin}/${nameprefix}_BOT_mm_0${i}${monat}.grb
+else
+  FILEATM=${dirin}/${nameprefix}_ATM_mm_${i}${monat}.grb
+  FILEBOT=${dirin}/${nameprefix}_BOT_mm_${i}${monat}.grb
+fi
+fi
+if [ ${szipin} -eq 1 ] ; then
+grib -sunzip ${dirin}/${FILEATM}.szip ${FILEATM}
+grib -sunzip ${dirin}/${FILEBOT}.szip ${FILEBOT}
+#else
+#ln -sf ${dirin}/${FILEATM} .
+#ln -sf ${dirin}/${FILEBOT} .
+fi
+if [ ${i} -eq ${iyr} ] && [ $monat -eq 01 ] ; then
+#bcodes=`cdo showcode ${FILEBOT}`
+#acodes=`cdo showcode ${FILEATM}`
+#bcodes="142 143 169 165 166 167 180 181 103"
+acodes=""
+for code in ${acodes} ${bcodes} ; do
+rm -f ${expid}${aid}_code${code}_${iyr}_${eyr} ;
+done
+fi
+#
+#
+#######################################################################
+#
+for code_atm in ${acodes} ; do
+cdo selcode,${code_atm} ${FILEATM} ${FILEATM}_code${code_atm}
+cat ${FILEATM}_code${code_atm} >> ${expid}${aid}_code${code_atm}_${iyr}_${eyr}
+rm ${FILEATM}_code${code_atm}
+done
+#
+#
+######################################################################
+#
+for code_bot in ${bcodes} ; do
+cdo selcode,${code_bot} ${FILEBOT} ${FILEBOT}_code${code_bot}
+cat ${FILEBOT}_code${code_bot} >> ${expid}${aid}_code${code_bot}_${iyr}_${eyr}
+rm ${FILEBOT}_code${code_bot}
+done
+#
+#
+if [ ${tarin} -eq 1 ]; then
+  rm -f ${FILEATM} ${FILEBOT}
+fi
+#
+monat=`expr ${monat} + $nm`
+done
+i=`expr ${i} + 1`
+done
+
+
+
+
+

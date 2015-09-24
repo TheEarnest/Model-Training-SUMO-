@@ -1,0 +1,175 @@
+#!/bin/ksh
+#
+set -e
+#
+typeset -Z2 monat
+anadir=`pwd`
+#for expid in A01 ; do
+##  cdo sellonlatbox,100,210,-10,30 M01_Surf100_code4_800-900.nc M01_MSurf100_code4_800-900.nc
+## C0101_echam5_ATM_mm_080102.grb
+modname="mpiom"
+expid=${JobID};  exp=/work/earnest/Analysis/out_CPI/${expid}/work
+dirin=/work/earnest/TrainSUMO/${expid}/outdata/mpiom
+dirout=${exp}
+gridinfo=/home/ntnu/earnest/Data/OBData/T31/GridInfo/GR30s.nc
+nameprefix=${expid}_${modname}
+cd $dirout
+dirout=`pwd`
+echo ${dirout}
+nm=1   # number of months computed per job
+isout6=no
+smonth="1 "
+#codes=' 1 3 4 2 5 7 207 112 214 70'
+codes='1 2 3 4 5'
+##  3 (UKO, zon. velocity), 4 (VKE, mer. velocity), 2 (THO, temperature)
+##  5 (SAO, salinity), 7 (WO, ver. velocity), 207 (WGO, GM vertical velocity)
+## 112 ?? , 214 ?? , 1 (ZO, sealevel), 70 (FLUM, total heatflux)
+#RLev="6,17,27,37,47,57,69,83,100,123,150,183,220,263,310,363,420,485"
+#RLev2="0,12,22,32,42,52,62,75,90,110,135,165,200,240,285,335,390,450,520"
+RLev="6,150"
+RLev2="0"
+prefixN=All
+
+for code in ${codes} ; do
+  fname=${expid}_${prefixN}_code${code}_${iyr}_${eyr}
+  rm -f ${fname} ;
+done
+
+
+
+fname=${expid}_${prefixN}_code${code}_${iyr}_${eyr}
+
+i=$iyr
+while [ ${i} -le $eyr ] ; do
+  echo $i
+  set -ex
+###  fort_08000101_08001231.tar
+  if [ ${isout6} == "no" ]; then  
+    if [ ${i} -le 999 ]; then
+      tarName="fort_0"${i}"0101_0"${i}"1231".tar
+    else
+      tarName="fort_"${i}"0101_"${i}"1231".tar
+    fi
+    echo $tarName
+    echo ${i}
+## ## C0101_echam5_ATM_mm_080102.grb
+    FILE=${dirin}/${nameprefix}"_0"${i}"0101_0"${i}"1231".grb
+    if [ ${i} -eq ${iyr} ] ; then
+     #codes=`cdo showcode ${FILE}`
+     for code in ${codes} ; do
+      rm -f ${expid}_code${code}_${iyr}_${eyr} ;
+     done
+    fi
+#
+#
+#######################################################################
+#
+    for code in ${codes} ; do
+      #cdo selcode,${code}  ${FILE}  ${FILE}_code${code}
+      ##TLev=`cdo showlevel ${FILE}`
+      if [ "${code}" -eq "1" ] || [ "${code}" -eq "70" ]; then
+        cdo selcode,${code} ${FILE}  temp_selcode
+				cdo -sellevel,${RLev2} temp_selcode ${FILE}_code${code}
+      else
+        cdo selcode,${code} ${FILE} temp_selcode
+        cdo -sellevel,${RLev} temp_selcode ${FILE}_code${code}
+#      cdo -merge -sellevel,${RLev} -selcode,${code} ${FILE}  ${FILE}_code${code}
+      fi
+    # select tropical band only
+      #cdo -t mpiom1 -f nc -setgrid,../GR30s.nc -selindexbox,2,121,1,101 -setgrid,r122x101  ${FILE}_code${code} ${FILE}"_tempnc"
+      #cdo remapcon,r240x120 ${FILE}"_tempnc" ${FILE}"_temprnc"
+      cat ${FILE}_code${code} >> ${expid}_${prefixN}_code${code}_${iyr}_${eyr}
+      rm ${FILE}_code${code}
+      #rm ${FILE}"_tempnc" ${FILE}"_temprnc"
+
+##  cdo -t mpiom2 -f nc copy test test.nc
+    done
+
+  else
+
+    for mth in smonth; do
+      if [ ${i} -le 999 ]; then
+        if [ ${mth} == 1  ]; then
+          tarName="fort_0"${i}"0101_0"${i}"0630".tar
+        else
+          tarName="fort_0"${i}"0701_0"${i}"1231".tar
+        fi
+      else
+        if [ ${mth} == 1  ]; then
+          tarName="fort_"${i}"0101_"${i}"0630".tar
+        else
+          tarName="fort_"${i}"0701_"${i}"1231".tar
+        fi
+      fi
+      echo $tarName
+      echo ${i}
+## ## C0101_echam5_ATM_mm_080102.grb
+      if [ ${i} -le 999 ]; then
+        if [ ${mth} == 1  ]; then
+          FILE=${dirin}/${nameprefix}"_0"${i}"0101_0"${i}"0630".grb
+        else
+          FILE=${dirin}/${nameprefix}"_0"${i}"0701_0"${i}"1231".grb
+        fi
+      else
+        if [ ${mth} == 1  ]; then
+          FILE=${dirin}/${nameprefix}"_"${i}"0101_"${i}"0630".grb
+        else
+          FILE=${dirin}/${nameprefix}"_"${i}"0701_"${i}"1231".grb
+        fi
+      fi
+      if [ ${i} -eq ${iyr} ] ; then
+       #codes=`cdo showcode ${FILE}`
+       for code in ${codes} ; do
+        rm -f ${expid}_code${code}_${iyr}_${eyr} ;
+       done
+      fi
+
+      for code in ${codes} ; do
+
+      #cdo selcode,${code}  ${FILE}  ${FILE}_code${code}
+      ##TLev=`cdo showlevel ${FILE}`
+        if [ "${code}" -eq "1" ] || [ "${code}" -eq "70" ]; then
+          cdo selcode,${code} ${FILE}  ${FILE}_tcode${code}
+        elif [ "${code}" -eq "7" ]; then
+         cdo -merge -sellevel,${RLev2} -selcode,${code} ${FILE}  ${FILE}_tcode${code}
+        else
+          cdo -merge -sellevel,${RLev} -selcode,${code} ${FILE}  ${FILE}_tcode${code}
+        fi
+    # select tropical band only
+        cdo -t mpiom1 -f nc -setgrid,../GR30s.nc -selindexbox,2,121,1,101 -setgrid,r122x101  ${FILE}_tcode${code} ${FILE}"_tempnc"
+        cdo remapcon,r240x120 ${FILE}"_tempnc" ${FILE}"_temprnc"
+        cat ${FILE}"_temprnc" >> ${expid}_${prefixN}_code${code}_${iyr}_${eyr}.nc
+        rm ${FILE}_tcode${code}
+        rm ${FILE}"_tempnc" ${FILE}"_temprnc"
+##  cdo -t mpiom2 -f nc copy test test.nc
+ exit
+      done
+    done
+
+  fi
+#
+#
+######################################################################
+#
+#\rm -f ${FILEATM} ${FILEBOT}
+#
+  i=`expr ${i} + 1`
+done
+#done ; #expid
+
+echo ${dirout}
+
+for code in ${codes} ; do
+  #mv ${expid}_${prefixN}_code${code}_${iyr}-${eyr} ${FILE}_code${code}
+  fname=${expid}_${prefixN}_code${code}_${iyr}_${eyr}
+  cdo setgrid,r122x101  ${fname} temp_setgrid
+  cdo selindexbox,2,121,1,101 temp_setgrid temp_selindexbox
+  cdo -t mpiom1 -f nc -setgrid,${gridinfo} temp_selindexbox temp_resetgrid
+#  cdo -t mpiom1 -f nc -setgrid,${gridinfo} -selindexbox,2,121,1,101 -setgrid,r122x101  ${FILE}_code${code} ${FILE}"_tempnc"
+  cdo remapcon,r240x120 temp_resetgrid temp_remapcon
+  mv temp_remapcon ${fname}
+	#cdo delname,
+  #cdo splitlevel temp_remapcon ${fname}
+  rm temp_*; 
+done
+

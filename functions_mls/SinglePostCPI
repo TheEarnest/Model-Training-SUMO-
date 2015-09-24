@@ -1,0 +1,80 @@
+#!/bin/bash
+PATH=${fpath}:$PATH
+ . ${home}/setup/nametable
+set -ex
+#------------------------------------------------------------------------------
+ExpID=$1
+CPIPeriod=${JobPeriod}
+if (( ${JobPeriod} > 1 )); then
+  (( JobPeriod = JobPeriod + spinupyrs ))
+fi
+
+#JobPeriod=$2
+export CLimit=${CLimit}
+expid=${ExpID}
+exphome=${homedir}/${expid}
+#export SleepSec=4
+logfn=${exphome}/scripts/PostCPIRunning
+  (( Tdiff = TimeUsed * 2 ))
+if [ -f ${logfn} ]; then
+  # check if the log is too old
+  TLastJob=`date --reference=${logfn}  +%s `; Tnow=`date +%s  `
+  ((  Tdiff = Tnow - TLastJob ))
+fi
+#------------------------------------------------------------------------------
+jobstamp=`date +%Y%m%d%H%M%S`
+echo ${ExpID}" is running!" > ${home}/Jobs/${ExpID}_PostCPI_${jobstamp}
+echo ${ExpID}" is running!" > ${exphome}/scripts/PostCPIRunning
+# submit Performance analysis
+worktarget=`echo ${workdir}/${expid}/outdata/echam5 | sed 's/\//\\\\\//g'`
+atmids=`grep "atmids=" job_run_templet | cut -c8-100 `
+cd ${exphome}/scripts
+outdir=${CPIdir}/${expid}
+mkdir -p ${outdir}
+EXPoutdir=`echo ${outdir} | sed 's/\//\\\\\//g'`
+function_path=`echo ${fpath} | sed 's/\//\\\\\//g'`
+
+cp ${home}/CPerfromanceI_templet CPerfromanceI
+ed -s CPerfromanceI <<EOF4
+g/#JobName/s/#JobName/${expid}/
+g/#JOBID/s/#JOBID/${expid}/
+g/#WORKDIR/s/#WORKDIR/${worktarget}/
+g/#FUNCTIONPATH/s/#FUNCTIONPATH/${function_path}/
+g/#CPIPeriod/s/#CPIPeriod/${CPIPeriod}/
+g/#ATMCMIDS/s/#ATMCMIDS/${atmids}/
+g/#EXPDIROUT/s/#EXPDIROUT/${EXPoutdir}/
+g/#CasePeriod/s/#CasePeriod/${JobPeriod}/
+w
+q
+EOF4
+
+if (( ${Tdiff} > ${TimeUsed} )); then
+  qsub CPerfromanceI
+  cp CPerfromanceI local_reference_file
+  sleep 2
+fi
+
+#------------------------------------------------------------------------------
+# Results
+# save namelist of ECHAM
+#cp  ${workdir}/${expid}/work/namelist.echam ${outdir}
+cd ${outdir}
+#save_file_mod oasis3 log PerformanceIndex temp_PerformanceIndex  || {
+#    echo '  |- file PerformanceIndex  not yet updated!!!!!' 
+#}
+cp ${logdir}/temp_PerformanceIndex PerformanceIndex   || {
+    echo '  |- file PerformanceIndex_tsurf  not yet updated!!!!!'
+}
+cat PerformanceIndex >> ../PerformanceIndex   || {
+    echo '  |- file PerformanceIndex_tsurf  not yet updated!!!!!'
+}
+set -ex
+if [ -f PerformanceIndex ]; then
+  PerIndex=`cat PerformanceIndex | awk -F "," '{print $1" "$5}'`
+  echo ${PerIndex} >> ${home}/${GPerfTable}
+  echo "PostCPI finished!!"
+  echo "Old data is going to be deleted................."
+  rm -rf ${exphome} 
+fi
+rm ${home}/Jobs/${ExpID}_PostCPI_${jobstamp}
+#

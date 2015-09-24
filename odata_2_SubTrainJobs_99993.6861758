@@ -1,0 +1,234 @@
++ '[' -f /home/uib/earnest/models/COSMOS/Ccosmos/training_experiments/GLaTrain/Jobs/firstjobid ']'
+++ cat /home/uib/earnest/models/COSMOS/Ccosmos/training_experiments/GLaTrain/Jobs/firstjobid
++ FJobID=0
++ IsFirstUnDone=.TRUE.
++ ExpNum=2
++ IsEOF=.FALSE.
++ nline=0
++ ActJobN=0
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 1p
++ JobParam='GLa338 0.426656149977 0.682211705532 1.21 done'
++ '[' 'GLa338 0.426656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa338 0.426656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa338 0.426656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa338
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 2p
++ JobParam='GLar38 0.426656149977 0.682211705532 1.21 done'
++ '[' 'GLar38 0.426656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLar38 0.426656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLar38 0.426656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLar38
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 3p
++ JobParam='GLae38 0.426656149977 0.682211705532 1.21 done'
++ '[' 'GLae38 0.426656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLae38 0.426656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLae38 0.426656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLae38
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 4p
++ JobParam='GLa330 0.026656149977 0.682211705532 1.21 done'
++ '[' 'GLa330 0.026656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa330 0.026656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa330 0.026656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa330
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 5p
++ JobParam='GLa332 0.126656149977 0.682211705532 1.21 done'
++ '[' 'GLa332 0.126656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa332 0.126656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa332 0.126656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa332
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 6p
++ JobParam='GLa334 0.226656149977 0.682211705532 1.21 done'
++ '[' 'GLa334 0.226656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa334 0.226656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa334 0.226656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa334
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 7p
++ JobParam='GLa336 0.326656149977 0.682211705532 1.21 done'
++ '[' 'GLa336 0.326656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa336 0.326656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa336 0.326656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa336
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 8p
++ JobParam='GLa340 0.526656149977 0.682211705532 1.21 done'
++ '[' 'GLa340 0.526656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa340 0.526656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa340 0.526656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa340
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 9p
++ JobParam='GLa342 0.626656149977 0.682211705532 1.21 done'
++ '[' 'GLa342 0.626656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa342 0.626656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa342 0.626656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa342
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 10p
++ JobParam='GLa344 0.726656149977 0.682211705532 1.21 done'
++ '[' 'GLa344 0.726656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa344 0.726656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa344 0.726656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa344
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 11p
++ JobParam='GLa346 0.826656149977 0.682211705532 1.21 done'
++ '[' 'GLa346 0.826656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa346 0.826656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa346 0.826656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa346
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 12p
++ JobParam='GLa348 0.926656149977 0.682211705532 1.21 done'
++ '[' 'GLa348 0.926656149977 0.682211705532 1.21 done' == '' ']'
+++ echo GLa348 0.926656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLa348 0.926656149977 0.682211705532 1.21 done
+++ awk -F ' ' '{print $1}'
++ Expid=GLa348
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 13p
++ JobParam='GLadone =================================== done'
++ '[' 'GLadone =================================== done' == '' ']'
+++ echo GLadone =================================== done
+++ awk -F ' ' '{print $NF}'
++ JobEND=done
+++ echo GLadone =================================== done
+++ awk -F ' ' '{print $1}'
++ Expid=GLadone
++ '[' done '!=' done ']'
++ OldJobEND=JobEND
++ ((  0 >= 2  ))
++ '[' .FALSE. == .FALSE. ']'
++ ((  nline = nline + 1  ))
+++ cat coefficients
+++ sed -n 14p
++ JobParam=
++ '[' '' == '' ']'
++ IsEOF=.TRUE.
++ ((  0 >= 2  ))
++ '[' .TRUE. == .FALSE. ']'
+++ echo GLadone
+++ cut -c4-6
++ id=don
++ ((  0 < 2   ))
++ ((  id = id + 1 ))
++ ((  ActJobN = ActJobN + 1  ))
++ Expid=GLa1
++ R1=12931
++ /home/uib/earnest/models/COSMOS/Ccosmos/training_experiments/GLaTrain/functions_mls/checkJobStatus_Learing.sh GLa1
+++ date +%Y_%m%d_%H%M_%S
++ ((  1 < 2   ))
++ ((  id = id + 1 ))
++ ((  ActJobN = ActJobN + 1  ))
++ Expid=GLa2
++ R1=30888
++ /home/uib/earnest/models/COSMOS/Ccosmos/training_experiments/GLaTrain/functions_mls/SingleJobCtl.sh GLa1 30
++ /home/uib/earnest/models/COSMOS/Ccosmos/training_experiments/GLaTrain/functions_mls/checkJobStatus_Learing.sh GLa2
+++ date +%Y_%m%d_%H%M_%S
+++ date +%Y_%m%d_%H%M_%S
++ ((  2 < 2   ))
++ /home/uib/earnest/models/COSMOS/Ccosmos/training_experiments/GLaTrain/functions_mls/SingleJobCtl.sh GLa2 30
+++ date +%Y_%m%d_%H%M_%S
